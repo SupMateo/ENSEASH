@@ -23,6 +23,8 @@ int main(int argc, char **argv)
     int last_type = NO_INT;
     int last_value = NO_INT;
 
+	long execution_time;
+
 
 	struct timespec start, end;
 
@@ -45,10 +47,13 @@ int main(int argc, char **argv)
 			perror("fork");
 			exit(EXIT_FAILURE);
 		}
+		clock_gettime(CLOCK_MONOTONIC, &start);
 
 		if (pid != 0)
 		{
 			wait(&status);
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			execution_time = (end.tv_sec - start.tv_sec) * 1000 + (end.tv_nsec - start.tv_nsec) / 1000000;
 
 
 			if (WIFEXITED(status))
@@ -96,21 +101,21 @@ void display_time()
     write(FD_TERMINAL_OUT, buffer_time, BUFSIZE_COMMAND);
 }
 
-void display_prompt(int type, int value)
+void display_prompt(int type, int value, long execution_time)
 {
 	char s[BUFSIZE_COMMAND];
     if (type == EXIT_INT)
     {
-        sprintf(s, "ENSEASH [exit %d] %%% ", value);
+        sprintf(s, "ENSEASH [exit %d | %dms] %% ", value, execution_time);
         write(FD_TERMINAL_OUT, s, strlen(s));
     }
     else if (type == SIGN_INT)
     {
-        sprintf(s,"ENSEASH [sign %d] %%% ", value);
+        sprintf(s,"ENSEASH [sign %d | %dms] %% ", value, execution_time);
         write(FD_TERMINAL_OUT, s, strlen(s));
     }
     else if (type == NO_INT)
     {
-        write(FD_TERMINAL_OUT, "ENSEASH % ", strlen("ENSEASH % "));
+        write(FD_TERMINAL_OUT, "ENSEASH %% ", strlen("ENSEASH %% "));
     }
 }
