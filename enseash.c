@@ -3,49 +3,114 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/wait.h>
 #include "enseash.h"
 
 #define BUFSIZE_COMMAND 1024
 #define FD_TERMINAL_OUT 1
 #define FD_TERMINAL_IN 0
 
+#define EXIT_INT 0
+#define SIGN_INT 1
+#define NO_INT -1
+
 int main(int argc, char **argv)
 {
-	char command[BUFSIZE_COMMAND];
-	
-	int ret,pid,status;
+    char command[BUFSIZE_COMMAND];
 
-	write(FD_TERMINAL_OUT,"Welcome to ENSEA's Shell.\n",sizeof("Welcome to ENSEA's Shell.\n"));
-	write(FD_TERMINAL_OUT,"Write 'exit' to stop the program\n",sizeof("Write 'exit' to stop the program\n")-1);
+    int ret, status;
+	pid_t pid;
+    int last_type = NO_INT;
+    int last_value = NO_INT;
 
-	while(1){
+
+	struct timespec start, end;
+
+    write(FD_TERMINAL_OUT, "Welcome to ENSEA's Shell.\n", strlen("Welcome to ENSEA's Shell.\n"));
+    write(FD_TERMINAL_OUT, "Write 'exit' to stop the program\n", strlen("Write 'exit' to stop the program\n"));
+
+    while (1)
+    {
+
+        display_prompt(last_type, last_value, execution_time);
+        ret = read(FD_TERMINAL_IN, command, BUFSIZE_COMMAND - 1);
+        command[ret - 1] = 0;
+        if (strcmp(command, "exit") == 0)
+        {
+            write(FD_TERMINAL_OUT, "Bye bye :)\n", strlen("Bye bye :)\n"));
+            exit(EXIT_SUCCESS);
+        }
 		
-		write(FD_TERMINAL_OUT,"ENSEASH %% ",sizeof("ENSEASH %% ")-1);
-		ret = read(FD_TERMINAL_IN,command,BUFSIZE_COMMAND-1);
-		command[ret-1] = 0;
-		pid = fork();
-		if(pid !=0){
+        if ((pid = fork()) == -1){
+			perror("fork");
+			exit(EXIT_FAILURE);
+		}
+
+		if (pid != 0)
+		{
 			wait(&status);
-		}else{
-			if (strcmp(command,"fortune")==0){
-				execlp("fortune", (char *)NULL);
-			}else if(!command[0]){
+
+
+			if (WIFEXITED(status))
+			{
+				last_type = EXIT_INT;
+				last_value = WEXITSTATUS(status);
+			}
+			else if (WIFSIGNALED(status))
+			{
+				last_type = SIGN_INT;
+				last_value = WTERMSIG(status);
+			}
+		}
+		else
+		{
+			if (strcmp(command, "fortune") == 0)
+			{
+				if ((execlp("fortune", (char *)NULL)) == -1)
+				{
+					perror("execlp");
+					exit(EXIT_FAILURE);
+				}
+				else
+				{
+					exit(EXIT_SUCCESS);
+				}
+			}
+			else if (!command[0])
+			{
 				display_time();
-			}else if(strcmp(command,"exit") ==0 ){
-				write(FD_TERMINAL_OUT,"Bye bye :)\n",sizeof("Bye bye :)\n"));
 				exit(EXIT_SUCCESS);
 			}
 		}
-	}
+    }
 }
 
-void display_time(){
-	char buffer_time[BUFSIZE_COMMAND]; 
-	struct tm * t;
-	time_t stamp;
-	time_t timestamp = time(NULL);
-	memset(buffer_time, 0, sizeof(buffer_time));
-	strftime(buffer_time, sizeof(buffer_time), "%a %b %d %H:%M:%S CET %Y\n", localtime(&timestamp)); 
-	write(FD_TERMINAL_OUT,buffer_time,BUFSIZE_COMMAND);
+void display_time()
+{
+    char buffer_time[BUFSIZE_COMMAND];
+    struct tm *t;
+    time_t stamp;
+    time_t timestamp = time(NULL);
+    memset(buffer_time, 0, sizeof(buffer_time));
+    strftime(buffer_time, sizeof(buffer_time), "%a %b %d %H:%M:%S CET %Y\n", localtime(&timestamp));
+    write(FD_TERMINAL_OUT, buffer_time, BUFSIZE_COMMAND);
 }
 
+void display_prompt(int type, int value)
+{
+	char s[BUFSIZE_COMMAND];
+    if (type == EXIT_INT)
+    {
+        sprintf(s, "ENSEASH [exit %d] %%% ", value);
+        write(FD_TERMINAL_OUT, s, strlen(s));
+    }
+    else if (type == SIGN_INT)
+    {
+        sprintf(s,"ENSEASH [sign %d] %%% ", value);
+        write(FD_TERMINAL_OUT, s, strlen(s));
+    }
+    else if (type == NO_INT)
+    {
+        write(FD_TERMINAL_OUT, "ENSEASH % ", strlen("ENSEASH % "));
+    }
+}
