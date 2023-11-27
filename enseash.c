@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <time.h>
 #include "enseash.h"
 
@@ -26,6 +27,9 @@ int main(int argc, char **argv)
 			write(FD_TERMINAL_OUT,"Today is what happenened yesterday.\n", sizeof("Today is what happenened yesterday.\n"));
 		}else if(!command[0]){
 			display_time();
+		}else if(strcmp(command,"exit") ==0 ){
+			write(FD_TERMINAL_OUT,"Bye bye :)\n",sizeof("Bye bye :)\n"));
+			exit(EXIT_SUCCESS);
 		}
 	}
 }
