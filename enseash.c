@@ -13,7 +13,7 @@ int main(int argc, char **argv)
 {
 	char command[BUFSIZE_COMMAND];
 	
-	int ret;
+	int ret,pid,status;
 
 	write(FD_TERMINAL_OUT,"Welcome to ENSEA's Shell.\n",sizeof("Welcome to ENSEA's Shell.\n"));
 	write(FD_TERMINAL_OUT,"Write 'exit' to stop the program\n",sizeof("Write 'exit' to stop the program\n")-1);
@@ -23,13 +23,18 @@ int main(int argc, char **argv)
 		write(FD_TERMINAL_OUT,"ENSEASH %% ",sizeof("ENSEASH %% ")-1);
 		ret = read(FD_TERMINAL_IN,command,BUFSIZE_COMMAND-1);
 		command[ret-1] = 0;
-		if (strcmp(command,"fortune")==0){
-			write(FD_TERMINAL_OUT,"Today is what happenened yesterday.\n", sizeof("Today is what happenened yesterday.\n"));
-		}else if(!command[0]){
-			display_time();
-		}else if(strcmp(command,"exit") ==0 ){
-			write(FD_TERMINAL_OUT,"Bye bye :)\n",sizeof("Bye bye :)\n"));
-			exit(EXIT_SUCCESS);
+		pid = fork();
+		if(pid !=0){
+			wait(&status);
+		}else{
+			if (strcmp(command,"fortune")==0){
+				execlp("fortune", (char *)NULL);
+			}else if(!command[0]){
+				display_time();
+			}else if(strcmp(command,"exit") ==0 ){
+				write(FD_TERMINAL_OUT,"Bye bye :)\n",sizeof("Bye bye :)\n"));
+				exit(EXIT_SUCCESS);
+			}
 		}
 	}
 }
