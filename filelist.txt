@@ -1,6 +1,0 @@
-enseash
-enseash.c
-enseash.h
-filelist.txt
-README.md
-test.txt

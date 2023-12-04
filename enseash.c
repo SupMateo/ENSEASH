@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "enseash.h"
 #include <fcntl.h>
 
@@ -35,13 +37,14 @@ int main(int argc, char **argv)
     {
         display_prompt(last_type, last_value, execution_time);
         ret = read(FD_TERMINAL_IN, command, BUFSIZE_COMMAND - 1);
+
+        //check if ctrl+D is used
         if (ret == 0){
          leave();
         }
+
         command[ret - 1] = 0;
         
-        
-
         if (strcmp(command, "exit") == 0)
         {
             leave();
@@ -126,52 +129,23 @@ void execute_command(char *command)
     char* in;
     char *args[BUFSIZE_COMMAND];
     int i = 0;
-
+    
+    //check if there are any redirection in the command
     if ((in = strchr(command, '<')) != NULL)
     {
-        if ((fd_in= open(in +2,O_RDONLY)) == -1)
-        {
-            perror("open");
-            exit(EXIT_FAILURE);
-        }
-
-        if (dup2(fd_in, STDIN_FILENO) == -1)
-        {
-            perror("dup2");
-            exit(EXIT_FAILURE);
-        }
-
-        if (fd_in != FD_TERMINAL_IN)
-        {
-            close(fd_in);
-        }
+        redirect_in(fd_in,in);
     }
 
     if ((out = strchr(command, '>')) != NULL)
     {
-        fd_out = open(out + 2, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
-        if (fd_out == -1)
-        {
-            perror("open");
-            exit(EXIT_FAILURE);
-        }
-
-        if (dup2(fd_out, STDOUT_FILENO) == -1)
-        {
-            perror("dup2");
-            exit(EXIT_FAILURE);
-        }
-
-        if (fd_out != FD_TERMINAL_OUT)
-        {
-            close(fd_out);
-        }
+        redirect_out(fd_out,out);     
     }
 
+    //parse the command
     arg = strtok(command, " ");
     while (arg != NULL && strcmp(arg, ">") != 0)
     {   
-        //We don't want the '<' as an arg.
+       //We don't want the '<' as an arg.
         if (strcmp(arg, "<") == 0 )
         {
             arg = strtok(NULL, " \t\n");
@@ -182,7 +156,7 @@ void execute_command(char *command)
     }
     args[i] = NULL;
 
-    
+        
 
     if (execvp(args[0], args) == -1)
     {
@@ -192,7 +166,7 @@ void execute_command(char *command)
 
     if (fd_out != FD_TERMINAL_OUT)
     {
-        if (dup2(fd_out, STDOUT_FILENO) == -1)
+       if (dup2(fd_out, STDOUT_FILENO) == -1)
         {
             perror("dup2");
             exit(EXIT_FAILURE);
@@ -200,13 +174,53 @@ void execute_command(char *command)
         close(fd_out);
     }
 
+    //free the memory
     for (int j = 0; j < i; ++j)
     {
         free(args[j]);
     }
 }
 
+
 void leave(){
     write(FD_TERMINAL_OUT, "\nBye bye :)\n", strlen("\nBye bye :)\n"));
     exit(EXIT_SUCCESS);
+}
+
+void redirect_in(int fd_in, char* in){
+    if ((fd_in= open(in +2,O_RDONLY)) == -1)
+    {
+        perror("open of redirect_in");
+        exit(EXIT_FAILURE);
+    }
+
+    if (dup2(fd_in, STDIN_FILENO) == -1)
+    {
+       perror("dup2 of redirect_in");
+       exit(EXIT_FAILURE);
+    }
+
+    if (fd_in != FD_TERMINAL_IN)
+    {
+        close(fd_in);
+    }
+}
+
+void redirect_out(int fd_out, char* out){  
+    if ((fd_out = open(out + 2, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU)) == -1)
+    {
+        perror("open of redirect_out");
+        exit(EXIT_FAILURE);
+    }
+
+    if (dup2(fd_out, STDOUT_FILENO) == -1)
+    {
+        perror("dup2 of redirect_out");
+        exit(EXIT_FAILURE);
+    }
+
+    if (fd_out != FD_TERMINAL_OUT)
+    {
+        close(fd_out);
+    }
 }
