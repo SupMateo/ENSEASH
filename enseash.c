@@ -69,22 +69,15 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			if (strcmp(command, "fortune") == 0)
-			{
-				if ((execlp("fortune", (char *)NULL)) == -1)
-				{
-					perror("execlp");
-					exit(EXIT_FAILURE);
-				}
-				else
-				{
-					exit(EXIT_SUCCESS);
-				}
-			}
-			else if (!command[0])
+			if (!command[0])
 			{
 				display_time();
 				exit(EXIT_SUCCESS);
+			}	
+			else if ((execlp(command, (char *)NULL)) == -1)
+			{
+				perror("execlp");
+				exit(EXIT_FAILURE);
 			}
 		}
     }
