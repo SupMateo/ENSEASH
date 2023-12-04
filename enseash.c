@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/wait.h>
+#include "enseash.h"
 
 #define BUFSIZE_COMMAND 1024
 #define FD_TERMINAL_OUT 1
@@ -13,9 +14,7 @@
 #define SIGN_INT 1
 #define NO_INT -1
 
-void display_time();
-void display_prompt(int type, int value, long execution_time);
-void execute_command(char *command);
+
 
 int main(int argc, char **argv)
 {
@@ -35,13 +34,16 @@ int main(int argc, char **argv)
     {
         display_prompt(last_type, last_value, execution_time);
         ret = read(FD_TERMINAL_IN, command, BUFSIZE_COMMAND - 1);
+        if (ret == 0){
+         leave();
+        }
         command[ret - 1] = 0;
+        
         
 
         if (strcmp(command, "exit") == 0)
         {
-            write(FD_TERMINAL_OUT, "Bye bye :)\n", strlen("Bye bye :)\n"));
-            exit(EXIT_SUCCESS);
+            leave();
         }
 
         if ((pid = fork()) == -1)
@@ -133,4 +135,9 @@ void execute_command(char *command)
         perror("execvp");
         exit(EXIT_FAILURE);
     }
+}
+
+void leave(){
+    write(FD_TERMINAL_OUT, "\nBye bye :)\n", strlen("\nBye bye :)\n"));
+    exit(EXIT_SUCCESS);
 }
