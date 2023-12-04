@@ -5,6 +5,7 @@
 #include <time.h>
 #include <sys/wait.h>
 #include "enseash.h"
+#include <fcntl.h>
 
 #define BUFSIZE_COMMAND 1024
 #define FD_TERMINAL_OUT 1
@@ -119,21 +120,89 @@ void display_prompt(int type, int value, long execution_time)
 void execute_command(char *command)
 {
     char *arg;
+    int fd_out;
+    int fd_in;
+    char *out;
+    char* in;
     char *args[BUFSIZE_COMMAND];
     int i = 0;
 
-    arg = strtok(command, " ");
-    while (arg != NULL)
+    if ((in = strchr(command, '<')) != NULL)
     {
-        args[i++] = arg;
+        if ((fd_in= open(in +2,O_RDONLY)) == -1)
+        {
+            perror("open");
+            exit(EXIT_FAILURE);
+        }
+
+        if (dup2(fd_in, STDIN_FILENO) == -1)
+        {
+            perror("dup2");
+            exit(EXIT_FAILURE);
+        }
+
+        if (fd_in != FD_TERMINAL_IN)
+        {
+            close(fd_in);
+        }
+    }
+
+    if ((out = strchr(command, '>')) != NULL)
+    {
+        fd_out = open(out + 2, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+        if (fd_out == -1)
+        {
+            perror("open");
+            exit(EXIT_FAILURE);
+        }
+
+        if (dup2(fd_out, STDOUT_FILENO) == -1)
+        {
+            perror("dup2");
+            exit(EXIT_FAILURE);
+        }
+
+        if (fd_out != FD_TERMINAL_OUT)
+        {
+            close(fd_out);
+        }
+    }
+
+    arg = strtok(command, " ");
+    while (arg != NULL && strcmp(arg, ">") != 0)
+    {   
+        //We don't want the '<' as an arg.
+        if (strcmp(arg, "<") == 0 )
+        {
+            arg = strtok(NULL, " \t\n");
+            continue;
+        }
+        args[i++] = strdup(arg);
         arg = strtok(NULL, " ");
     }
     args[i] = NULL;
+
+    
 
     if (execvp(args[0], args) == -1)
     {
         perror("execvp");
         exit(EXIT_FAILURE);
+    }
+
+    if (fd_out != FD_TERMINAL_OUT)
+    {
+        if (dup2(fd_out, STDOUT_FILENO) == -1)
+        {
+            perror("dup2");
+            exit(EXIT_FAILURE);
+        }
+        close(fd_out);
+    }
+
+    for (int j = 0; j < i; ++j)
+    {
+        free(args[j]);
     }
 }
 
